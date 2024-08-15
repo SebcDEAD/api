@@ -1,53 +1,54 @@
-// pages/api/hello.js
+import mysql from 'mysql2/promise';
 
-// Datos simulados
-let users = [
-  { username: '1', password: 'x' }
-];
+export default async function handler(req, res) {
+  const { accion } = req.query;
 
-export default function handler(req, res) {
-  switch (req.method) {
-    case 'GET':
-      // Devuelve todos los usuarios
-      res.status(200).json(users);
-      break;
+  // Conexión a MySQL
+  const connection = await mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'perfume',
+  });
 
-    case 'POST':
-      // Agrega un nuevo usuario
-      const { username, password } = req.body;
-      if (!username || !password) {
-        return res.status(400).json({ error: 'Faltan username o password' });
+  if (accion === 'validar') {
+    const { username, password } = req.query;
+
+    const query = `
+      SELECT COUNT(*) AS conteo 
+      FROM usuarios 
+      WHERE usuario = ? AND contrasena = ?
+    `;
+    const values = [username, password];
+
+    try {
+      const [rows] = await connection.execute(query, values);
+      const count = rows[0].conteo;
+
+      if (count == 1) {
+        // Autenticación exitosa
+        res.status(200).json({ success: true, message: 'Autenticación exitosa' });
+      } else {
+        // Credenciales incorrectas
+        res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
       }
-      users.push({ username, password });
-      res.status(201).json({ message: 'Usuario agregado exitosamente' });
-      break;
+    } catch (error) {
+      // Error en la consulta
+      res.status(500).json({ success: false, error: error.message });
+    }
 
-    case 'PUT':
-      // Actualiza un usuario existente
-      const { oldUsername, newUsername, newPassword } = req.body;
-      if (!oldUsername || !newUsername || !newPassword) {
-        return res.status(400).json({ error: 'Faltan oldUsername, newUsername o newPassword' });
-      }
-      const userIndex = users.findIndex(user => user.username === oldUsername);
-      if (userIndex === -1) {
-        return res.status(404).json({ error: 'Usuario no encontrado' });
-      }
-      users[userIndex] = { username: newUsername, password: newPassword };
-      res.status(200).json({ message: 'Usuario actualizado exitosamente' });
-      break;
+  } else if (accion === 'traer_perfumes') {
+    const query = 'SELECT * FROM perfumes';
 
-    case 'DELETE':
-      // Elimina un usuario
-      const { deleteUsername } = req.body;
-      if (!deleteUsername) {
-        return res.status(400).json({ error: 'Falta deleteUsername' });
-      }
-      users = users.filter(user => user.username !== deleteUsername);
-      res.status(200).json({ message: 'Usuario eliminado exitosamente' });
-      break;
-
-    default:
-      res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
-      res.status(405).end(`Method ${req.method} Not Allowed`);
+    try {
+      const [rows] = await connection.execute(query);
+      res.status(200).json(rows);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  } else {
+    res.status(400).json({ success: false, message: 'Acción inválida' });
   }
+
+  await connection.end();
 }
