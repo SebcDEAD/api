@@ -1,14 +1,15 @@
+// pages/api/handler.js
 import mysql from 'mysql2/promise';
 
 export default async function handler(req, res) {
   const { accion } = req.query;
 
-  // Conexión a MySQL
+  // Conexión a MySQL usando variables de entorno
   const connection = await mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'perfume',
+    host: process.env.DB_HOST,       
+    user: process.env.DB_USER,            
+    password: process.env.DB_PASSWORD,           
+    database: process.env.DB_NAME,    
   });
 
   if (accion === 'validar') {
@@ -26,14 +27,11 @@ export default async function handler(req, res) {
       const count = rows[0].conteo;
 
       if (count == 1) {
-        // Autenticación exitosa
-        res.status(200).json({ success: true, message: 'Autenticación exitosa' });
+        res.status(200).json({ success: true });
       } else {
-        // Credenciales incorrectas
-        res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
+        res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
     } catch (error) {
-      // Error en la consulta
       res.status(500).json({ success: false, error: error.message });
     }
 
@@ -47,7 +45,7 @@ export default async function handler(req, res) {
       res.status(500).json({ success: false, error: error.message });
     }
   } else {
-    res.status(400).json({ success: false, message: 'Acción inválida' });
+    res.status(400).json({ success: false, message: 'Invalid action' });
   }
 
   await connection.end();
