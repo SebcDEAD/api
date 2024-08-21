@@ -1,8 +1,10 @@
-// pages/api/handler.js
 import mysql from 'mysql2/promise';
 
 export default async function handler(req, res) {
   const { accion } = req.query;
+
+  // Depuración: Verificar los valores de la query
+  console.log(req.query);
 
   // Conexión a MySQL usando variables de entorno
   const connection = await mysql.createConnection({
@@ -17,7 +19,7 @@ export default async function handler(req, res) {
 
     const query = `
       SELECT COUNT(*) AS conteo 
-      FROM usuarios 
+      FROM usuarios
       WHERE usuario = ? AND contrasena = ?
     `;
     const values = [username, password];
@@ -44,9 +46,21 @@ export default async function handler(req, res) {
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
+
+  } else if (accion === 'traer_foto') {
+    const query = 'SELECT * FROM foto';
+
+    try {
+      const [rows] = await connection.execute(query);
+      console.log("Rows obtenidas:", rows);  // Verificar lo que devuelve la consulta
+      res.status(200).json(rows);
+    } catch (error) {
+      console.error("Error ejecutando la consulta:", error.message);
+      res.status(500).json({ success: false, error: error.message });
+    }
+    
   } else {
     res.status(400).json({ success: false, message: 'Invalid action' });
   }
-
   await connection.end();
 }
